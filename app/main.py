@@ -5,15 +5,15 @@ import asyncio
 async def handle_client(conn: socket, addr: str):
     print(f"Accepted connection from {addr}")
     while True:
-        msg = conn.recv(1024)
-        if not msg:
+        try:
+            msg = conn.recv(1024)
+        except BlockingIOError:
             break
         print(f"Received: {msg}")
         response = b"+PONG\r\n"
         print(f"Sending response {response}")
         conn.sendall(response)
-    conn.close()
-    print(f"Closes connection from {addr}")
+    # print(f"Closes connection from {addr}")
 
 
 async def main():
