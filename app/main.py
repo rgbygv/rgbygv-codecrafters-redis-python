@@ -1,29 +1,31 @@
 import socket  # noqa: F401
 import asyncio
+from asyncio import StreamWriter, StreamReader
+from app.redis import decode, encode
 
 
-async def handle_client(conn: socket, addr: str):
-    print(f"Accepted connection from {addr}")
-    loop = asyncio.get_event_loop()
+async def handle_client(reader: StreamReader, writer: StreamWriter):
+    # print(f"Accepted connection from {addr}")
     while True:
-        msg = await loop.sock_recv(conn, 1024)
+        msg = await reader.read(1024)
         if len(msg) == 0:
             break
         print(f"Received: {msg}")
-        response = b"+PONG\r\n"
+        command, *args = decode(msg)
+        if command == b"PING":
+            response = b"+PONG\r\n"
+        if command == b"ECHO":
+            response = encode(args)
         print(f"Sending response {response}")
-        await loop.sock_sendall(conn, response)
-    # print(f"Closes connection from {addr}")
+        writer.write(response)
+        await writer.drain()
+    writer.close()
 
 
 async def main():
-    server_socket = socket.create_server(("localhost", 6379), reuse_port=True)
-    server_socket.setblocking(False)
-    loop = asyncio.get_event_loop()
-    while True:
-        conn, addr = await loop.sock_accept(server_socket)
-        conn.setblocking(False)
-        loop.create_task(handle_client(conn, addr))
+    server = await asyncio.start_server(handle_client, "localhost", 6379)
+    async with server:
+        await server.serve_forever()
 
 
 if __name__ == "__main__":

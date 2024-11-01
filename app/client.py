@@ -5,7 +5,7 @@ async def tcp_client():
     reader, writer = await asyncio.open_connection("localhost", 6379)
 
     # 发送消息
-    message = b"PING\r\n"
+    message = b"*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n"
     print(f"Sending: {message}")
     writer.write(message)
     await writer.drain()  # 确保消息已经发送
