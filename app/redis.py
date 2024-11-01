@@ -1,3 +1,7 @@
+OK = b"+OK\r\n"
+NULL = b"$-1\r\n"
+
+
 def decode(message: bytearray) -> list[bytearray]:
     msg = message.split(b"\r\n")[:-1]
     n = len(msg)

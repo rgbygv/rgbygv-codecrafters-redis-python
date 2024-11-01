@@ -1,11 +1,12 @@
 import socket  # noqa: F401
 import asyncio
 from asyncio import StreamWriter, StreamReader
-from app.redis import decode, encode
+from app.redis import decode, encode, OK, NULL
 
 
 async def handle_client(reader: StreamReader, writer: StreamWriter):
     # print(f"Accepted connection from {addr}")
+    m = dict()
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
@@ -14,8 +15,18 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         command, *args = decode(msg)
         if command == b"PING":
             response = b"+PONG\r\n"
-        if command == b"ECHO":
+        elif command == b"ECHO":
             response = encode(args)
+        elif command == b"SET":
+            k, v = args
+            m[k] = v
+            response = OK
+        elif command == b"GET":
+            k = args[0]
+            if k in m:
+                response = m[k]
+            else:
+                response = NULL
         print(f"Sending response {response}")
         writer.write(response)
         await writer.drain()

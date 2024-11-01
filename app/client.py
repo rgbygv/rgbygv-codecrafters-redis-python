@@ -1,20 +1,27 @@
 import asyncio
+from app.redis import encode
 
 
 async def tcp_client():
     reader, writer = await asyncio.open_connection("localhost", 6379)
 
-    # 发送消息
-    message = b"*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n"
+    # SET
+    message = encode([b"SET", b"foo", b"bar"])
     print(f"Sending: {message}")
     writer.write(message)
-    await writer.drain()  # 确保消息已经发送
-
-    # 接收响应
+    await writer.drain()
     data = await reader.read(1024)
     print(f"Received: {data}")
 
-    # 关闭连接
+    # GET
+    message = encode([b"GET", b"foo"])
+    print(f"Sending: {message}")
+    writer.write(message)
+    await writer.drain()
+    data = await reader.read(1024)
+    print(f"Received: {data}")
+
+    # Close
     writer.close()
     await writer.wait_closed()
     print("Connection closed.")
@@ -22,5 +29,6 @@ async def tcp_client():
 
 # 运行客户端
 if __name__ == "__main__":
-    for i in range(10):
-        asyncio.run(tcp_client())
+    asyncio.run(tcp_client())
+    # for i in range(10):
+    #     asyncio.run(tcp_client())
