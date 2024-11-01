@@ -1,12 +1,13 @@
-import socket  # noqa: F401
 import asyncio
 from asyncio import StreamWriter, StreamReader
 from app.redis import decode, encode, OK, NULL
+import time
 
 
 async def handle_client(reader: StreamReader, writer: StreamWriter):
     # print(f"Accepted connection from {addr}")
     m = dict()
+    expiry = dict()
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
@@ -18,12 +19,20 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         elif command == b"ECHO":
             response = encode(args)
         elif command == b"SET":
-            k, v = args
-            m[k] = encode([v])
+            if len(args) == 2:
+                k, v = args
+                m[k] = encode([v])
+            elif len(args) == 4:
+                k, v, _, t = args
+                m[k] = encode([v])
+                expiry[k] = time.perf_counter_ns() + (10**6) * int.from_bytes(t)
+            else:
+                raise NotImplementedError
             response = OK
         elif command == b"GET":
             k = args[0]
-            if k in m:
+            if k in m and (k not in expiry or time.perf_counter_ns() <= expiry[k]):
+                print(time.perf_counter_ns(), expiry[k])
                 response = m[k]
             else:
                 response = NULL
