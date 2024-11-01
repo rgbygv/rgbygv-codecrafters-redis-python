@@ -6,7 +6,7 @@ def main():
     conn, addr = server_socket.accept()  # wait for client
     print(f"recieve client {conn} {addr}")
     while True:
-        command = conn.recv()
+        command = conn.recv(1024)
         print(command)
         response = b"+PONG\r\n"
         print(f"sending response {response}")
