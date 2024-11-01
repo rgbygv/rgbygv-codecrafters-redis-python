@@ -19,7 +19,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             response = encode(args)
         elif command == b"SET":
             k, v = args
-            m[k] = v
+            m[k] = encode([v])
             response = OK
         elif command == b"GET":
             k = args[0]
