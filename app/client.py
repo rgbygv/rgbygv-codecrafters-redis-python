@@ -6,8 +6,7 @@ async def tcp_client():
     reader, writer = await asyncio.open_connection("localhost", 6379)
 
     # SET
-    t = 100
-    message = encode([b"SET", b"foo", b"bar", b"px", t.to_bytes()])
+    message = encode([b"SET", b"foo", b"bar", b"px", b"100"])
     print(f"Sending: {message}")
     writer.write(message)
     await writer.drain()

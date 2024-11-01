@@ -24,15 +24,15 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 m[k] = encode([v])
             elif len(args) == 4:
                 k, v, _, t = args
+                t = int("".join(map(chr, t)))
                 m[k] = encode([v])
-                expiry[k] = time.perf_counter_ns() + (10**6) * int.from_bytes(t)
+                expiry[k] = time.perf_counter_ns() + (10**6) * t
             else:
                 raise NotImplementedError
             response = OK
         elif command == b"GET":
             k = args[0]
             if k in m and (k not in expiry or time.perf_counter_ns() <= expiry[k]):
-                print(time.perf_counter_ns(), expiry[k])
                 response = m[k]
             else:
                 response = NULL
