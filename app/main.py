@@ -4,15 +4,15 @@ import asyncio
 
 async def handle_client(conn: socket, addr: str):
     print(f"Accepted connection from {addr}")
+    loop = asyncio.get_event_loop()
     while True:
-        try:
-            msg = conn.recv(1024)
-        except BlockingIOError:
+        msg = await loop.sock_recv(conn, 1024)
+        if len(msg) == 0:
             break
         print(f"Received: {msg}")
         response = b"+PONG\r\n"
         print(f"Sending response {response}")
-        conn.sendall(response)
+        await loop.sock_sendall(conn, response)
     # print(f"Closes connection from {addr}")
 
 
