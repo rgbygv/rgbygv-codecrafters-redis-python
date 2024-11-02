@@ -40,8 +40,14 @@ def encode(s: list[bytearray], array_mode: bool = False) -> bytearray:
 
 def read_rdb(dir: str, dbfile_name: str) -> Tuple[dict, dict]:
     file = f"{dir}/{dbfile_name}"
+
     m = dict()
     expiry = dict()
+
+    import os
+
+    if not os.path.exists(file):
+        return m, expiry
 
     with open(file, "rb") as f:
         # ignore head and metadata session
