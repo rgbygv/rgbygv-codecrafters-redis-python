@@ -53,8 +53,12 @@ def read_rdb(dir: str, dbfile_name: str) -> Tuple[dict, dict]:
         # ignore head and metadata session
         # just find the FC and FD
 
-        """e.g:  b'\xfe\x00\xfb\x01\x00\x00\x05mykey\x05myval' """
-
+        """e.g:
+        b'\xfe\x00\xfb\x01\x00\x00\x05mykey\x05myval'
+        b'\xfe\x00\xfb\x03\x01\x00\x05mykey\x05myval
+        \xfc\xe7\x03\xfc\xec\x92\x01\x00\x00\x00\x05hello\x05world
+        \x00\x03foo\x03bar\xffE\xea\xea\x9b\xb7c\xdbL'
+        """
         data = f.read(1)[0]
         while data != 0xFE:
             data = f.read(1)[0]
@@ -64,26 +68,26 @@ def read_rdb(dir: str, dbfile_name: str) -> Tuple[dict, dict]:
         # print(index, table_type, size, expires_size)
         assert table_type == 0xFB
 
-        # handle normal dict
+        # data come random
         for _ in range(size):
             value_type = f.read(1)[0]
-            assert value_type == 0  # only string
-            n = f.read(1)[0]
-            key = f.read(n)
-            n = f.read(1)[0]
-            value = f.read(n)
-            print(f"insert {key} {value}")
-            m[key] = encode([value])
-
-        # handle expiry table
-        for _ in range(expires_size):
-            timestamp_type = f.read(1)[0]
+            # handle normal dict
+            if value_type == 0:  # string, normal dict
+                n = f.read(1)[0]
+                key = f.read(n)
+                n = f.read(1)[0]
+                value = f.read(n)
+                print(f"insert {key} {value}")
+                m[key] = encode([value])
+                continue
+            # handle expiry table
+            timestamp_type = value_type
             if timestamp_type == 0xFC:
                 t = int.from_bytes(f.read(8), "little")
             elif timestamp_type == 0xFD:
                 t = int.from_bytes(f.read(4), "little")
             value_type = f.read(1)[0]
-            assert value_type == 0
+            assert value_type == 0, print(value_type)
             n = f.read(1)[0]
             key = f.read(n)
             n = f.read(1)[0]
