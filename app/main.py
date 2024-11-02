@@ -1,8 +1,10 @@
 import asyncio
-from asyncio import StreamWriter, StreamReader
-from app.redis import decode, encode, OK, NULL
-import time
+import re
 import sys
+import time
+from asyncio import StreamReader, StreamWriter
+
+from app.redis import NULL, OK, decode, encode, read_rdb
 
 # globle config read from commands
 # ./your_program.sh --dir /tmp/redis-files --dbfilename dump.rdb
@@ -10,17 +12,21 @@ import sys
 DIR = None
 DBFILENAME = None
 
+# global for client
+m: dict[bytearray, bytearray] = dict()
+expiry: dict[bytearray, int] = dict()
+
 
 async def handle_client(reader: StreamReader, writer: StreamWriter):
     # print(f"Accepted connection from {addr}")
-    m = dict()
-    expiry = dict()
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
             break
-        print(f"Received: {msg}")
+        print(f"Received: {decode(msg)}")
+        # TODO: make all message to str
         command, *args = decode(msg)
+        command = command.upper()  # ignore case
         if command == b"PING":
             response = b"+PONG\r\n"
         elif command == b"ECHO":
@@ -53,6 +59,22 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 response = encode([file_type, DIR.encode()])
             elif file_type == b"dbfilename":
                 response = encode([file_type, DBFILENAME.encode()])
+        elif command == b"KEYS":
+            assert len(args) == 1
+            pattern = args[0].decode().replace("*", ".*")
+            print(f"search keys like {pattern} in {m}")
+            response = []
+            for key in m.keys():
+                if re.match(pattern.encode(), key):
+                    response.append(key)
+            if response:
+                response = encode(response)
+            else:
+                response = NULL
+        else:
+            print(command)
+            raise NotImplementedError
+
         print(f"Sending response {response}")
         writer.write(response)
         await writer.drain()
@@ -62,11 +84,12 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
 async def main():
     # TODO: use click to handle cli
     if len(sys.argv) >= 5:
-        global DIR, DBFILENAME
+        global DIR, DBFILENAME, m, expiry
         assert sys.argv[1] == "--dir"
         DIR = sys.argv[2]
         assert sys.argv[3] == "--dbfilename"
         DBFILENAME = sys.argv[4]
+        m, expiry = read_rdb(DIR, DBFILENAME)
 
     server = await asyncio.start_server(handle_client, "localhost", 6379)
     async with server:
