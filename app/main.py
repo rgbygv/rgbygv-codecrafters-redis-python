@@ -68,7 +68,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 if re.match(pattern.encode(), key):
                     response.append(key)
             if response:
-                response = encode(response)
+                response = encode(response, True)
             else:
                 response = NULL
         else:

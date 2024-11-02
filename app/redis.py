@@ -22,9 +22,9 @@ def decode(message: bytearray) -> list[bytearray]:
         raise NotImplementedError
 
 
-def encode(s: list[bytearray]) -> bytearray:
+def encode(s: list[bytearray], array_mode: bool = False) -> bytearray:
     res = []
-    if len(s) == 1:
+    if len(s) == 1 and not array_mode:
         # simple string
         res.append(f"${len(s[0])}".encode())
         res.append(s[0])
