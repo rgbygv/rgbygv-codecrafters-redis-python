@@ -40,14 +40,14 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 k, v, _, t = args
                 t = int(t.decode())
                 m[k] = encode([v])
-                expiry[k] = time.perf_counter_ns() + (10**6) * t
+                expiry[k] = time.time() + t / 1000
             else:
                 raise NotImplementedError
             response = OK
         elif command == b"GET":
             # TODO: need lock
             k = args[0]
-            if k in m and (k not in expiry or time.perf_counter_ns() <= expiry[k]):
+            if k in m and (k not in expiry or time.time() <= expiry[k]):
                 response = m[k]
             else:
                 response = NULL

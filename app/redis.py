@@ -82,9 +82,9 @@ def read_rdb(dir: str, dbfile_name: str) -> Tuple[dict, dict]:
                 continue
             # handle expiry table
             timestamp_type = value_type
-            if timestamp_type == 0xFC:
-                t = int.from_bytes(f.read(8), "little")
-            elif timestamp_type == 0xFD:
+            if timestamp_type == 0xFC:  # ms
+                t = int.from_bytes(f.read(8), "little") / 1000
+            elif timestamp_type == 0xFD:  # s
                 t = int.from_bytes(f.read(4), "little")
             value_type = f.read(1)[0]
             assert value_type == 0, print(value_type)
