@@ -73,10 +73,17 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 response = NULL
         elif command == b"INFO":
             assert args == [b"replication"]
-            if not REPLICAOF:
-                response = encode([b"role" + b":" + b"master"])
-            else:
-                response = encode([b"role" + b":" + b"slave"])
+            response = [b"role"]
+            role = b"master" if not REPLICAOF else b"slave"
+            response.append(role)
+            response.append(b"master_replid")
+            master_replid = b"8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
+            response.append(master_replid)
+            response.append(b"master_repl_offset ")
+            master_repl_offset = b"0"
+            response.append(master_repl_offset)
+
+            response = encode([b":".join(response)])
         else:
             print(command)
             raise NotImplementedError
