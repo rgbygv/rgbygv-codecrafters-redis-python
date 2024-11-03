@@ -79,7 +79,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             response.append(b"master_replid")
             master_replid = b"8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
             response.append(master_replid)
-            response.append(b"master_repl_offset ")
+            response.append(b"master_repl_offset")
             master_repl_offset = b"0"
             response.append(master_repl_offset)
 
