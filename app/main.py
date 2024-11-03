@@ -142,8 +142,6 @@ async def main():
 
     if REPLICAOF:
         master_host, master_port = REPLICAOF.split(" ")
-        # master = await asyncio.start_server(handle_client, master_host, master_port)
-        # asyncio.create_task(master.serve_forever())
         ping_resp = await send_message_to_master(
             master_host, master_port, encode([b"PING"], array_mode=True)
         )
@@ -159,9 +157,7 @@ async def main():
         )
         assert ok2 == OK
 
-        # async with master:
-        #     await master.serve_forever()
-
+    # TODO: handle ownship of this
     m, expiry = read_rdb(DIR, DBFILENAME)
 
     server = await asyncio.start_server(handle_client, "localhost", PORT)
