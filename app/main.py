@@ -110,7 +110,7 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
 
         response = await reader.read(1024)
         print(f"received {response} from master")
-        if i < len(response):
+        if i < len(responses):
             assert response == responses[i]
 
     writer.close()
