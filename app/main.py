@@ -83,6 +83,8 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             response.append(master_repl_offset)
 
             response = encode([b":".join(response)])
+        elif command == b"REPLCONF":
+            response = OK
         else:
             print(command)
             raise NotImplementedError
@@ -93,16 +95,20 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
     writer.close()
 
 
-async def send_message_to_master(master_host, master_port, message):
-    _, writer = await asyncio.open_connection(master_host, master_port)
+async def send_message_to_master(master_host, master_port, message: bytearray):
+    reader, writer = await asyncio.open_connection(master_host, master_port)
 
-    msg = encode([message], array_mode=True)
-    writer.write(msg)
+    writer.write(message)
     await writer.drain()
-    print(f"Sent PING to master: {msg}")
+    print(f"Sent {message} to master")
+
+    response = await reader.read(1024)
+    print(f"received {response} from master")
 
     writer.close()
     await writer.wait_closed()
+
+    return response
 
 
 async def main():
@@ -121,7 +127,7 @@ async def main():
         help="Database filename (default: dump.rdb)",
     )
     parser.add_argument(
-        "--port", type=int, default=6379, help="Port number to use (default: 6380)"
+        "--port", type=str, default="6379", help="Port number to use (default: 6380)"
     )
     parser.add_argument(
         "--replicaof", type=str, default=None, help="<MASTER_HOST> <MASTER_PORT>"
@@ -136,10 +142,22 @@ async def main():
 
     if REPLICAOF:
         master_host, master_port = REPLICAOF.split(" ")
-        master_port = int(master_port)
         # master = await asyncio.start_server(handle_client, master_host, master_port)
         # asyncio.create_task(master.serve_forever())
-        await send_message_to_master(master_host, master_port, b"PING")
+        ping_resp = await send_message_to_master(
+            master_host, master_port, encode([b"PING"], array_mode=True)
+        )
+        assert ping_resp == b"+PONG\r\n"
+        ok1 = await send_message_to_master(
+            master_host,
+            master_port,
+            encode([b"REPLCONF", b"listening-port", PORT.encode()]),
+        )
+        assert ok1 == OK
+        ok2 = await send_message_to_master(
+            master_host, master_port, encode(b"REPLCONF capa psync2".split())
+        )
+        assert ok2 == OK
 
         # async with master:
         #     await master.serve_forever()
