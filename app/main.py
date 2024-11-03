@@ -1,14 +1,13 @@
+import argparse
 import asyncio
 import re
-import sys
 import time
 from asyncio import StreamReader, StreamWriter
 
 from app.redis import NULL, OK, decode, encode, read_rdb
 
-# globle config read from commands
-# ./your_program.sh --dir /tmp/redis-files --dbfilename dump.rdb
-
+# TODO: make global vars in their place
+PORT = None
 DIR = None
 DBFILENAME = None
 
@@ -82,16 +81,32 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
 
 
 async def main():
-    # TODO: use click to handle cli
-    if len(sys.argv) >= 5:
-        global DIR, DBFILENAME, m, expiry
-        assert sys.argv[1] == "--dir"
-        DIR = sys.argv[2]
-        assert sys.argv[3] == "--dbfilename"
-        DBFILENAME = sys.argv[4]
-        m, expiry = read_rdb(DIR, DBFILENAME)
+    parser = argparse.ArgumentParser(description="Process some arguments.")
 
-    server = await asyncio.start_server(handle_client, "localhost", 6379)
+    parser.add_argument(
+        "--dir",
+        type=str,
+        default=".",
+        help="Directory to use (default: current directory)",
+    )
+    parser.add_argument(
+        "--dbfilename",
+        type=str,
+        default="dump.rdb",
+        help="Database filename (default: dump.rdb)",
+    )
+    parser.add_argument(
+        "--port", type=int, default=6379, help="Port number to use (default: 6380)"
+    )
+
+    args = parser.parse_args()
+    global DIR, DBFILENAME, PORT, m, expiry
+    PORT = args.port
+    DIR = args.dir
+    DBFILENAME = args.dbfilename
+    m, expiry = read_rdb(DIR, DBFILENAME)
+
+    server = await asyncio.start_server(handle_client, "localhost", PORT)
     async with server:
         await server.serve_forever()
 
