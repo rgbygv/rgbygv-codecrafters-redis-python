@@ -137,8 +137,8 @@ async def main():
     if REPLICAOF:
         master_host, master_port = REPLICAOF.split(" ")
         master_port = int(master_port)
-        master = await asyncio.start_server(handle_client, master_host, master_port)
-        asyncio.create_task(master.serve_forever())
+        # master = await asyncio.start_server(handle_client, master_host, master_port)
+        # asyncio.create_task(master.serve_forever())
         await send_message_to_master(master_host, master_port, b"PING")
 
         # async with master:
