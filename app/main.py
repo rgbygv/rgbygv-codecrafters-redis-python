@@ -95,20 +95,23 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
     writer.close()
 
 
-async def send_message_to_master(master_host, master_port, message: bytearray):
+async def send_message_to_master(master_host, master_port, messages: bytearray):
     reader, writer = await asyncio.open_connection(master_host, master_port)
 
-    writer.write(message)
-    await writer.drain()
-    print(f"Sent {message} to master")
+    responses = []
+    for message in messages:
+        writer.write(message)
+        await writer.drain()
+        print(f"Sent {message} to master")
 
-    response = await reader.read(1024)
-    print(f"received {response} from master")
+        response = await reader.read(1024)
+        responses.append(response)
+        print(f"received {response} from master")
+
+    assert responses == [b"+PONG\r\n", OK, OK]
 
     writer.close()
     await writer.wait_closed()
-
-    return response
 
 
 async def main():
@@ -142,20 +145,15 @@ async def main():
 
     if REPLICAOF:
         master_host, master_port = REPLICAOF.split(" ")
-        ping_resp = await send_message_to_master(
-            master_host, master_port, encode([b"PING"], array_mode=True)
-        )
-        assert ping_resp == b"+PONG\r\n"
-        ok1 = await send_message_to_master(
+        await send_message_to_master(
             master_host,
             master_port,
-            encode([b"REPLCONF", b"listening-port", PORT.encode()]),
+            [
+                encode([b"PING"], array_mode=True),
+                encode([b"REPLCONF", b"listening-port", PORT.encode()]),
+                encode(b"REPLCONF capa psync2".split()),
+            ],
         )
-        assert ok1 == OK
-        ok2 = await send_message_to_master(
-            master_host, master_port, encode(b"REPLCONF capa psync2".split())
-        )
-        assert ok2 == OK
 
     # TODO: handle ownship of this
     m, expiry = read_rdb(DIR, DBFILENAME)
