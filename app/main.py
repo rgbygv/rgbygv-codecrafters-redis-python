@@ -18,7 +18,6 @@ expiry: dict[bytearray, int] = dict()
 
 
 async def handle_client(reader: StreamReader, writer: StreamWriter):
-    # print(f"Accepted connection from {addr}")
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
@@ -94,6 +93,18 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
     writer.close()
 
 
+async def send_message_to_master(master_host, master_port, message):
+    _, writer = await asyncio.open_connection(master_host, master_port)
+
+    msg = encode([message], array_mode=True)
+    writer.write(msg)
+    await writer.drain()
+    print(f"Sent PING to master: {msg}")
+
+    writer.close()
+    await writer.wait_closed()
+
+
 async def main():
     parser = argparse.ArgumentParser(description="Process some arguments.")
 
@@ -122,6 +133,17 @@ async def main():
     DIR = args.dir
     DBFILENAME = args.dbfilename
     REPLICAOF = args.replicaof
+
+    if REPLICAOF:
+        master_host, master_port = REPLICAOF.split(" ")
+        master_port = int(master_port)
+        master = await asyncio.start_server(handle_client, master_host, master_port)
+        asyncio.create_task(master.serve_forever())
+        await send_message_to_master(master_host, master_port, b"PING")
+
+        # async with master:
+        #     await master.serve_forever()
+
     m, expiry = read_rdb(DIR, DBFILENAME)
 
     server = await asyncio.start_server(handle_client, "localhost", PORT)
