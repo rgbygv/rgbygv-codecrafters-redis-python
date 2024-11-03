@@ -70,6 +70,9 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 response = encode(response, True)
             else:
                 response = NULL
+        elif command == b"INFO":
+            assert args == [b"replication"]
+            response = encode([b"role" + b":" + b"master"])
         else:
             print(command)
             raise NotImplementedError
