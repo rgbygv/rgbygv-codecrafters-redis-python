@@ -85,6 +85,8 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             response = encode([b":".join(response)])
         elif command == b"REPLCONF":
             response = OK
+        elif command == b"PSYNC":
+            response = b"+FULLRESYNC <REPL_ID> 0\r\n"
         else:
             print(command)
             raise NotImplementedError
@@ -95,20 +97,18 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
     writer.close()
 
 
-async def send_message_to_master(master_host, master_port, messages: bytearray):
+async def send_message_to_master(master_host, master_port, messages: list[bytearray]):
     reader, writer = await asyncio.open_connection(master_host, master_port)
 
-    responses = []
-    for message in messages:
+    responses = [b"+PONG\r\n", OK, OK, b"+FULLRESYNC <REPL_ID> 0\r\n"]
+    for i, message in enumerate(messages):
         writer.write(message)
         await writer.drain()
         print(f"Sent {message} to master")
 
         response = await reader.read(1024)
-        responses.append(response)
         print(f"received {response} from master")
-
-    assert responses == [b"+PONG\r\n", OK, OK]
+        assert response == responses[i]
 
     writer.close()
     await writer.wait_closed()
@@ -152,6 +152,7 @@ async def main():
                 encode([b"PING"], array_mode=True),
                 encode([b"REPLCONF", b"listening-port", PORT.encode()]),
                 encode(b"REPLCONF capa psync2".split()),
+                encode(b"PSYNC ? -1".split()),
             ],
         )
 
