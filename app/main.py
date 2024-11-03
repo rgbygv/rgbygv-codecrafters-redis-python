@@ -10,6 +10,7 @@ from app.redis import NULL, OK, decode, encode, read_rdb
 PORT = None
 DIR = None
 DBFILENAME = None
+REPLICAOF = None
 
 # global for client
 m: dict[bytearray, bytearray] = dict()
@@ -72,7 +73,10 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 response = NULL
         elif command == b"INFO":
             assert args == [b"replication"]
-            response = encode([b"role" + b":" + b"master"])
+            if not REPLICAOF:
+                response = encode([b"role" + b":" + b"master"])
+            else:
+                response = encode([b"role" + b":" + b"slave"])
         else:
             print(command)
             raise NotImplementedError
@@ -101,12 +105,16 @@ async def main():
     parser.add_argument(
         "--port", type=int, default=6379, help="Port number to use (default: 6380)"
     )
+    parser.add_argument(
+        "--replicaof", type=str, default=None, help="<MASTER_HOST> <MASTER_PORT>"
+    )
 
     args = parser.parse_args()
-    global DIR, DBFILENAME, PORT, m, expiry
+    global DIR, DBFILENAME, PORT, REPLICAOF, m, expiry
     PORT = args.port
     DIR = args.dir
     DBFILENAME = args.dbfilename
+    REPLICAOF = args.replicaof
     m, expiry = read_rdb(DIR, DBFILENAME)
 
     server = await asyncio.start_server(handle_client, "localhost", PORT)
