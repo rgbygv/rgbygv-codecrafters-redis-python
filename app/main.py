@@ -87,6 +87,13 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             response = OK
         elif command == b"PSYNC":
             response = b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"
+            print(f"Sending response {response}")
+            writer.write(response)
+            await writer.drain()
+            empty_file = b"524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2"
+            bin_empty_file = bin(int.from_bytes(empty_file))[2:]
+            response = encode([bin_empty_file.encode()], trail_space=False)
+
         else:
             print(command)
             raise NotImplementedError

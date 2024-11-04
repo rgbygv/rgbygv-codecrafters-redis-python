@@ -22,7 +22,9 @@ def decode(message: bytearray) -> list[bytearray]:
         raise NotImplementedError
 
 
-def encode(s: list[bytearray], array_mode: bool = False) -> bytearray:
+def encode(
+    s: list[bytearray], array_mode: bool = False, trail_space: bool = True
+) -> bytearray:
     res = []
     if len(s) == 1 and not array_mode:
         # simple string
@@ -34,7 +36,8 @@ def encode(s: list[bytearray], array_mode: bool = False) -> bytearray:
             n = len(key)
             res.append(f"${n}".encode())
             res.append(key)
-    res.append(b"")
+    if trail_space:
+        res.append(b"")
     return b"\r\n".join(res)
 
 
