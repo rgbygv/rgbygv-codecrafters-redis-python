@@ -13,9 +13,10 @@ DIR = None
 DBFILENAME = None
 REPLICAOF = None
 
-# global for client
+
 m: dict[bytearray, bytearray] = dict()
 expiry: dict[bytearray, int] = dict()
+replica_ports: list[str] = list()
 
 
 async def handle_client(reader: StreamReader, writer: StreamWriter):
@@ -33,6 +34,11 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             response = encode(args)
         elif command == b"SET":
             # TODO: need lock
+            # TODOO: need be silent when received from master
+            for replica_port in replica_ports:
+                # TODO:reuse connection
+                print(f"propagating command {msg} to replica {replica_port}")
+                await send_command_to_replica("localhost", replica_port, msg)
             if len(args) == 2:
                 k, v = args
                 m[k] = encode([v])
@@ -85,6 +91,11 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
 
             response = encode([b":".join(response)])
         elif command == b"REPLCONF":
+            # TODO: parse the replica port
+            # [b'listening-port', b'6380']
+            if args[0] == b"listening-port":
+                replica_port = args[1].decode()
+                replica_ports.append(replica_port)
             response = OK
         elif command == b"PSYNC":
             response = b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"
@@ -94,6 +105,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             hex_empty_file = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2"
             bin_empty_file = binascii.unhexlify(hex_empty_file)
             response = encode([bin_empty_file], trail_space=False)
+            # we should reuse this connection to send commands to client
 
         else:
             print(command)
@@ -119,6 +131,16 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         print(f"received {response} from master")
         if i < len(responses):
             assert response == responses[i]
+
+    writer.close()
+    await writer.wait_closed()
+
+
+async def send_command_to_replica(replica_host, replica_port, command: bytearray):
+    _, writer = await asyncio.open_connection(replica_host, replica_port)
+    writer.write(command)
+    await writer.drain()
+    print(f"Sent {command} to replica {replica_port}")
 
     writer.close()
     await writer.wait_closed()
