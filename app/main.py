@@ -13,9 +13,10 @@ DIR = None
 DBFILENAME = None
 REPLICAOF = None
 
-
 m: dict[bytearray, bytearray] = dict()
 expiry: dict[bytearray, int] = dict()
+
+connections = {}
 replica_ports: list[str] = list()
 
 
@@ -137,13 +138,17 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
 
 
 async def send_command_to_replica(replica_host, replica_port, command: bytearray):
-    _, writer = await asyncio.open_connection(replica_host, replica_port)
+    if (replica_host, replica_port) not in connections:
+        connections[(replica_host, replica_port)] = await asyncio.open_connection(
+            replica_host, replica_port
+        )
+    _, writer = connections[(replica_host, replica_port)]
     writer.write(command)
     await writer.drain()
     print(f"Sent {command} to replica {replica_port}")
 
-    writer.close()
-    await writer.wait_closed()
+    # writer.close()
+    # await writer.wait_closed()
 
 
 async def main():
