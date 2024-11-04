@@ -38,7 +38,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             # TODOO: need be silent when received from master
             for replica_port in replica_ports:
                 # TODO:reuse connection
-                print(f"propagating command {msg} to replica {replica_port}")
+                print(f"Propagating command {msg} to replica {replica_port}")
                 await send_command_to_replica("localhost", replica_port, msg)
             if len(args) == 2:
                 k, v = args
@@ -142,11 +142,12 @@ async def send_command_to_replica(replica_host, replica_port, command: bytearray
         connections[(replica_host, replica_port)] = await asyncio.open_connection(
             replica_host, replica_port
         )
-    _, writer = connections[(replica_host, replica_port)]
+    reader, writer = connections[(replica_host, replica_port)]
     writer.write(command)
     await writer.drain()
     print(f"Sent {command} to replica {replica_port}")
-
+    # ignore replica response
+    await reader.read(1024)
     # writer.close()
     # await writer.wait_closed()
 
