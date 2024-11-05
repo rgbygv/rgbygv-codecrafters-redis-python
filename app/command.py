@@ -10,7 +10,6 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
     reader, writer = await asyncio.open_connection(master_host, master_port)
 
     responses = [b"+PONG\r\n", OK, OK]
-    # b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n",
     for i, message in enumerate(messages):
         writer.write(message)
         await writer.drain()
@@ -21,17 +20,19 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         if i < len(responses):
             assert response == responses[i]
 
-    # here can receive response from master
-    while 1:
-        msg = await reader.read(1024)
-
-        if not msg:
-            break
-        print(f"Replica reveive message {msg}")
-        await handle_command(msg, None, writer)
+    rdb_file = await reader.read(1024)
+    print(f"replica receive rdbfile {rdb_file}")
 
     # writer.close()
     # await writer.wait_closed()
+
+    # here can receive response from master
+    while 1:
+        msg = await reader.read(1024)
+        if not msg:
+            break
+        print(f"replica receive message {msg}")
+        await handle_command(msg, None, writer)
 
 
 async def send_command_to_replica(replica_port, writer, command: bytearray):
@@ -54,6 +55,7 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
     )
     from app.redis import NULL, OK, decode, encode
 
+    print(f"handle message {decode(msg)}")
     command, *args = decode(msg)
     command = command.upper()  # ignore case
     if command == b"PING":

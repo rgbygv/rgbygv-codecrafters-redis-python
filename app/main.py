@@ -25,7 +25,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         msg = await reader.read(1024)
         if len(msg) == 0:
             break
-        print(f"Received: {decode(msg)}")
+        print(f"Received: {msg}")
         response = await handle_command(msg, connection_port, writer)
         print(f"Sending response {response}")
         writer.write(response)
@@ -63,6 +63,18 @@ async def main():
     DBFILENAME = args.dbfilename
     REPLICAOF = args.replicaof
 
+    # TODO: handle ownship of this
+    m, expiry = read_rdb(DIR, DBFILENAME)
+
+    # await asyncio.create_task(asyncio.start_server(handle_client, "localhost", PORT))
+    async def _start_server():
+        server = await asyncio.start_server(handle_client, "localhost", PORT)
+        print(f"Server started on port {PORT}")
+        async with server:
+            await server.serve_forever()
+
+    server_task = asyncio.create_task(_start_server())
+
     if REPLICAOF:
         master_host, master_port = REPLICAOF.split(" ")
         await send_message_to_master(
@@ -76,12 +88,7 @@ async def main():
             ],
         )
 
-    # TODO: handle ownship of this
-    m, expiry = read_rdb(DIR, DBFILENAME)
-
-    server = await asyncio.start_server(handle_client, "localhost", PORT)
-    async with server:
-        await server.serve_forever()
+    await server_task
 
 
 if __name__ == "__main__":
