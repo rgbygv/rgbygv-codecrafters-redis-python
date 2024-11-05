@@ -2,7 +2,7 @@ import argparse
 import asyncio
 from asyncio import StreamReader, StreamWriter
 
-from app.redis import decode, encode, read_rdb
+from app.redis import encode, read_rdb
 from app.command import handle_command, send_message_to_master
 
 PORT = None

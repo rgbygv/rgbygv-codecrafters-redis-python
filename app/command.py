@@ -20,8 +20,8 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         if i < len(responses):
             assert response == responses[i]
 
-    rdb_file = await reader.read(1024)
-    print(f"replica receive rdbfile {rdb_file}")
+    # rdb_file = await reader.read(1024)
+    # print(f"replica receive rdbfile {rdb_file}")
 
     # writer.close()
     # await writer.wait_closed()
@@ -31,7 +31,7 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         msg = await reader.read(1024)
         if not msg:
             break
-        print(f"replica receive message {msg}")
+        print(f"replica receive master's message {msg}")
         await handle_command(msg, None, writer)
 
 
