@@ -12,28 +12,31 @@ r = Redis()
 
 async def send_message_to_master(master_host, master_port, messages: list[bytearray]):
     reader, writer = await asyncio.open_connection(master_host, master_port)
-
-    responses = [b"+PONG\r\n", OK, OK]
+    responses = [
+        b"+PONG\r\n",
+        OK,
+        OK,
+        b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n",
+    ]
     for i, message in enumerate(messages):
         writer.write(message)
         await writer.drain()
         print(f"Sent {message} to master")
-
-        response = await reader.read(1024)
-        print(f"received {response} from master")
         if i < len(responses):
-            assert response == responses[i]
+            response = await reader.read(len(responses[i]))
+            print(f"received {response} from master")
+
+    # rdb_file
+    rdb_file_len = await reader.readline()
+    rdb_file = await reader.read(int(rdb_file_len[1:]))
+    print(f"rdb file length: {rdb_file_len}, file: {rdb_file}")
 
     while 1:
         msg = await reader.read(1024)
         if not msg:
             break
         print(f"replica receive master's command {msg}")
-        try:
-            multi_command = decode_master(msg)
-        except Exception:
-            print(msg)
-            multi_command = []
+        multi_command = decode_master(msg)
         for write_msg in multi_command:
             await handle_command(encode(write_msg), None, reader, writer)
 
