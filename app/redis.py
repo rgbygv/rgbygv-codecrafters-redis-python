@@ -1,7 +1,22 @@
+from dataclasses import dataclass, field
 from typing import Tuple
 
 OK = b"+OK\r\n"
 NULL = b"$-1\r\n"
+
+
+@dataclass
+class Redis:
+    PORT: str = None
+    DIR: str = None
+    DBFILENAME: str = None
+    REPLICAOF: str = None
+
+    m: dict[bytearray, bytearray] = field(default_factory=dict)
+    expiry: dict[bytearray, int] = field(default_factory=dict)
+
+    replica_ports: dict = field(default_factory=dict)
+    connect_replica: dict = field(default_factory=dict)
 
 
 # b'*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\n456\r\n*3\r\n$3\r\nSET\r\n$3\r\nbaz\r\n$3\r\n789\r\n'
