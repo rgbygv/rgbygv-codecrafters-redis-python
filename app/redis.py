@@ -34,7 +34,7 @@ def decode_master(message):
             res.append(msg[i + 1])
             i += 2
         msgs.append(res)
-    print(f"decode multi set command :{msgs}")
+    print(f"decode multi command :{msgs}")
     return msgs
 
 

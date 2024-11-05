@@ -37,8 +37,16 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
             break
         print(f"replica receive master's command {msg}")
         multi_command = decode_master(msg)
-        for write_msg in multi_command:
-            await handle_command(encode(write_msg), None, reader, writer)
+        for cmd in multi_command:
+            print(cmd)
+            cmd[0] = cmd[0].upper()
+            if cmd[0] == b"SET":
+                await handle_command(encode(cmd), None, reader, writer)
+            elif cmd[0] == b"REPLCONF":
+                print("Send ack response to master")
+                response = encode(b"REPLCONF ACK 0".split())
+                writer.write(response)
+                await writer.drain()
 
 
 async def send_command_to_replica(replica_port, writer, command: bytearray):
@@ -137,8 +145,6 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
             print(f"Sending acknowledgement to replica {_replica_port}")
             ack_msg = encode(b"REPLCONF GETACK *".split())
             await send_command_to_replica(_replica_port, _writer, ack_msg)
-            # resp = await reader.read(1024)
-            # print(f"receive replica response of ack: {resp}")
         if len(args) == 2:
             k, v = args
             r.m[k] = encode([v])
@@ -199,8 +205,10 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
             response = OK
         elif args[0] == b"capa":
             response = OK
-        elif args[0] == b"GETACK":
-            response = encode(b"REPLCONF ACK 0".split())
+        elif args[0] == b"ACK":
+            print(f"receive replica response of ack: {args}")
+            raise NotImplementedError
+            # response = OK
     elif command == b"PSYNC":
         response = b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"
         print(f"Sending response {response}")
