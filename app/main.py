@@ -7,7 +7,6 @@ from asyncio import StreamReader, StreamWriter
 
 from app.redis import NULL, OK, decode, encode, read_rdb
 
-# TODO: make global vars in their place
 PORT = None
 DIR = None
 DBFILENAME = None
@@ -16,17 +15,21 @@ REPLICAOF = None
 m: dict[bytearray, bytearray] = dict()
 expiry: dict[bytearray, int] = dict()
 
-connections = {}
-replica_ports: list[str] = list()
+replica_ports = {}
+connect_replica = {}
+
+SILENT = False
 
 
 async def handle_client(reader: StreamReader, writer: StreamWriter):
+    _, connection_port, *_ = writer.get_extra_info("peername")
+    print(f"Connect from {connection_port}")
+
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
             break
         print(f"Received: {decode(msg)}")
-        # TODO: make all message to str
         command, *args = decode(msg)
         command = command.upper()  # ignore case
         if command == b"PING":
@@ -34,12 +37,12 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         elif command == b"ECHO":
             response = encode(args)
         elif command == b"SET":
-            # TODO: need lock
-            # TODOO: need be silent when received from master
-            for replica_port in replica_ports:
-                # TODO:reuse connection
-                print(f"Propagating command {msg} to replica {replica_port}")
-                await send_command_to_replica("localhost", replica_port, msg)
+            if connection_port == REPLICAOF:  # don't response
+                global SILENT
+                SILENT = True
+            for _replica_port, _writer in connect_replica.values():
+                print(f"Propagating command {msg} to replica {_replica_port}")
+                await send_command_to_replica(_replica_port, _writer, msg)
             if len(args) == 2:
                 k, v = args
                 m[k] = encode([v])
@@ -52,7 +55,6 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 raise NotImplementedError
             response = OK
         elif command == b"GET":
-            # TODO: need lock
             k = args[0]
             if k in m and (k not in expiry or time.time() <= expiry[k]):
                 response = m[k]
@@ -92,11 +94,13 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
 
             response = encode([b":".join(response)])
         elif command == b"REPLCONF":
-            # TODO: parse the replica port
             # [b'listening-port', b'6380']
+            # We ignore the origin replica port
+            # replace it by the connect_port by replica
             if args[0] == b"listening-port":
                 replica_port = args[1].decode()
-                replica_ports.append(replica_port)
+            replica_ports[connection_port] = replica_port
+
             response = OK
         elif command == b"PSYNC":
             response = b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"
@@ -106,18 +110,22 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             hex_empty_file = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2"
             bin_empty_file = binascii.unhexlify(hex_empty_file)
             response = encode([bin_empty_file], trail_space=False)
-            # we should reuse this connection to send commands to client
+            connect_replica[connection_port] = replica_ports[connection_port], writer
 
         else:
             print(command)
             raise NotImplementedError
 
-        print(f"Sending response {response}")
-        writer.write(response)
-        await writer.drain()
-    writer.close()
+        if not SILENT:
+            print(f"Sending response {response}")
+            writer.write(response)
+            await writer.drain()
+            # except ConnectionResetError:
+            #     connect_replica.pop(connection_port)
+    # TODO: we give replica writer to connect_replcia dict
 
 
+# can i do this by replica, not create a new connnection?
 async def send_message_to_master(master_host, master_port, messages: list[bytearray]):
     reader, writer = await asyncio.open_connection(master_host, master_port)
 
@@ -133,21 +141,21 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         if i < len(responses):
             assert response == responses[i]
 
-    writer.close()
-    await writer.wait_closed()
+    # here can receive response from master
+    while 1:
+        msg = await reader.read(1024)
+        if not msg:
+            break
+        print(f"Reveive message {msg}")
+
+    # writer.close()
+    # await writer.wait_closed()
 
 
-async def send_command_to_replica(replica_host, replica_port, command: bytearray):
-    if (replica_host, replica_port) not in connections:
-        connections[(replica_host, replica_port)] = await asyncio.open_connection(
-            replica_host, replica_port
-        )
-    reader, writer = connections[(replica_host, replica_port)]
+async def send_command_to_replica(replica_port, writer, command: bytearray):
     writer.write(command)
     await writer.drain()
     print(f"Sent {command} to replica {replica_port}")
-    # ignore replica response
-    await reader.read(1024)
     # writer.close()
     # await writer.wait_closed()
 
