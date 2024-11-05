@@ -5,7 +5,7 @@ import re
 import time
 from asyncio import StreamReader, StreamWriter
 
-from app.redis import NULL, OK, Redis, decode, decode_write, encode, read_rdb
+from app.redis import NULL, OK, Redis, decode, decode_master, encode, read_rdb
 
 r = Redis()
 
@@ -24,20 +24,17 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         if i < len(responses):
             assert response == responses[i]
 
-    # writer.close()
-    # await writer.wait_closed()
-
     while 1:
-        msg = await reader.read(1024)  # write message: SET
+        msg = await reader.read(1024)
         if not msg:
             break
         print(f"replica receive master's command {msg}")
         try:
-            multi_set_command = decode_write(msg)
+            multi_command = decode_master(msg)
         except Exception:
             print(msg)
-            multi_set_command = []
-        for write_msg in multi_set_command:
+            multi_command = []
+        for write_msg in multi_command:
             await handle_command(encode(write_msg), None, writer)
 
 
@@ -134,6 +131,9 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Propagating command {msg} to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, msg)
+            print(f"Sending acknowledgement to replica {_replica_port}")
+            ack_msg = encode(b"REPLCONF GETACK *".split())
+            await send_command_to_replica(_replica_port, _writer, ack_msg)
         if len(args) == 2:
             k, v = args
             r.m[k] = encode([v])
@@ -202,7 +202,8 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         bin_empty_file = binascii.unhexlify(hex_empty_file)
         response = encode([bin_empty_file], trail_space=False)
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
-
+    elif command == b"REPLCONF":
+        response = encode(b"REPLCONF ACK 0".split())
     else:
         print(command)
         raise NotImplementedError

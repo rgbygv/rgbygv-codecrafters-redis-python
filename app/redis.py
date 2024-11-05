@@ -19,8 +19,7 @@ class Redis:
     connect_replica: dict = field(default_factory=dict)
 
 
-# b'*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\n456\r\n*3\r\n$3\r\nSET\r\n$3\r\nbaz\r\n$3\r\n789\r\n'
-def decode_write(message):
+def decode_master(message):
     msg = message.split(b"\r\n")[:-1]
     print(f"maybe contain multiple command: {msg}")
     n = len(msg)
