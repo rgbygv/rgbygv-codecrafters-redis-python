@@ -5,7 +5,7 @@ import time
 
 
 async def send_message_to_master(master_host, master_port, messages: list[bytearray]):
-    from app.redis import OK, decode_write
+    from app.redis import OK, decode_write, encode
 
     reader, writer = await asyncio.open_connection(master_host, master_port)
 
@@ -33,7 +33,7 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
             break
         print(f"replica receive master's message {msg}")
         for write_msg in decode_write(msg):
-            await handle_command(write_msg, None, writer)
+            await handle_command(encode(write_msg), None, writer)
 
 
 async def send_command_to_replica(replica_port, writer, command: bytearray):
