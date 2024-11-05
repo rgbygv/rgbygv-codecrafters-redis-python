@@ -7,11 +7,12 @@ NULL = b"$-1\r\n"
 # b'*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n*3\r\n$3\r\nSET\r\n$3\r\nbar\r\n$3\r\n456\r\n*3\r\n$3\r\nSET\r\n$3\r\nbaz\r\n$3\r\n789\r\n'
 def decode_write(message):
     msg = message.split(b"\r\n")[:-1]
+    print(f"maybe contain multiple command: {msg}")
     n = len(msg)
     i = 0
     msgs = []
     while i < n:
-        assert msg[i][0:1] == b"*"
+        # assert msg[i][0:1] == b"*"
         res = []
         size = int(msg[i][1:])
         i += 1
