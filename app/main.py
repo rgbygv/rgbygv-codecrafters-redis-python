@@ -24,9 +24,6 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
         if i < len(responses):
             assert response == responses[i]
 
-    rdb_file = await reader.read(1024)
-    print(f"replica receive rdbfile {rdb_file}")
-
     # writer.close()
     # await writer.wait_closed()
 
@@ -177,7 +174,6 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
     elif command == b"INFO":
         assert args == [b"replication"]
         response = [b"role"]
-        print(r)
         role = b"master" if not r.REPLICAOF else b"slave"
         response.append(role)
         response.append(b"master_replid")
