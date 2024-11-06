@@ -3,7 +3,6 @@ from typing import Tuple
 
 OK = b"+OK\r\n"
 NULL = b"$-1\r\n"
-ZERO = b":0\r\n"
 
 
 @dataclass
@@ -58,13 +57,19 @@ def decode(message: bytearray) -> list[bytearray]:
 
 
 def encode(
-    s: list[bytearray], array_mode: bool = False, trail_space: bool = True
+    s: list[bytearray | int], array_mode: bool = False, trail_space: bool = True
 ) -> bytearray:
     res = []
     if len(s) == 1 and not array_mode:
         # simple string
-        res.append(f"${len(s[0])}".encode())
-        res.append(s[0])
+        if isinstance(s[0], str):
+            res.append(f"${len(s[0])}".encode())
+            res.append(s[0])
+        # int
+        elif isinstance(s[0], int):
+            res.append(f":{s[0]}".encode())
+        else:
+            raise NotImplementedError
     else:
         res.append(f"*{len(s)}".encode())
         for key in s:

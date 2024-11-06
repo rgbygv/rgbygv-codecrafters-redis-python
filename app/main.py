@@ -5,7 +5,7 @@ import re
 import time
 from asyncio import StreamReader, StreamWriter
 
-from app.redis import NULL, OK, Redis, decode, decode_master, encode, read_rdb, ZERO
+from app.redis import NULL, OK, Redis, decode, decode_master, encode, read_rdb
 
 r = Redis()
 
@@ -225,7 +225,7 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
     elif command == b"WAIT":
         print(args)
-        response = ZERO
+        response = encode([len(r.connect_replica)])
     else:
         print(command)
         raise NotImplementedError
