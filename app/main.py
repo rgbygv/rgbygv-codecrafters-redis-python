@@ -225,7 +225,7 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
     elif command == b"WAIT":
         print(args)
-        response = b"0"
+        response = encode([b"0"])
     else:
         print(command)
         raise NotImplementedError
