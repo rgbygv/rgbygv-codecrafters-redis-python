@@ -262,7 +262,8 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             response = encode([b"none"])
     elif command == b"XADD":
         stream_key, entry_id, *kvs = args
-
+        if entry_id == b"*":
+            entry_id = f"{int(time.time() * 1000)}-*".encode()
         mt, sn = entry_id.decode().split("-")  # millisecondsTime, sequenceNumber
         mt = int(mt)
         if sn != "*":
