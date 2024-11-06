@@ -267,7 +267,7 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             stream_key.decode(), entry_id.decode(), dict(zip(kvs[0::2], kvs[1::2]))
         )
         r.m[stream_key] = stream
-        response = encode([stream_key])
+        response = encode([entry_id])
 
     else:
         print(command)
