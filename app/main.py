@@ -240,7 +240,8 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         )
         cur_time = time.time()
         while (
-            r.ack_replica < expect_replica
+            r.ack_replica != -1
+            and r.ack_replica < expect_replica
             and (time.time() - cur_time) * 1000 < expiry_time
         ):
             await asyncio.sleep(0)
