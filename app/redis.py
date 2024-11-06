@@ -18,6 +18,8 @@ class Redis:
     replica_ports: dict = field(default_factory=dict)
     connect_replica: dict = field(default_factory=dict)
 
+    ack_replica: int = 0
+
 
 def decode_master(message):
     msg = message.split(b"\r\n")[:-1]

@@ -144,6 +144,8 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
     elif command == b"ECHO":
         response = encode(args)
     elif command == b"SET":
+        # clear previous ack count
+        r.ack_replica = 0
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Propagating command {msg} to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, msg)
@@ -212,6 +214,7 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
             response = OK
         elif args[0] == b"ACK":
             print(f"receive replica response of ack: {args}")
+            r.ack_replica += 1
             raise NotImplementedError
             # response = OK
     elif command == b"PSYNC":
@@ -225,7 +228,14 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
     elif command == b"WAIT":
         print(args)
-        response = encode([len(r.connect_replica)])
+        expect_replica, expiry_time = map(int, (arg.decode() for arg in args))
+        cur_time = time.time()
+        while (
+            r.ack_replica < expect_replica
+            or (time.time() - cur_time) / 1000 < expiry_time
+        ):
+            pass
+        response = encode([r.ack_replica])
     else:
         print(command)
         raise NotImplementedError
