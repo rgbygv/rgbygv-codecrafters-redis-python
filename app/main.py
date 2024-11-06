@@ -262,11 +262,30 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             response = encode([b"none"])
     elif command == b"XADD":
         stream_key, entry_id, *kvs = args
+
         assert len(kvs) & 1 == 0
+        millisecondsTime, sequenceNumber = map(int, entry_id.decode().split("-"))
+
+        if millisecondsTime == sequenceNumber == 0:
+            return encode(
+                [b"-ERR The ID specified in XADD must be greater than 0-0\r\n"]
+            )
+
+        if r.last_entry_id:
+            if (millisecondsTime, sequenceNumber) <= tuple(
+                map(int, r.last_entry_id.decode().split("-"))
+            ):
+                return encode(
+                    [
+                        b"-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n"
+                    ]
+                )
+
         stream = Stream(
             stream_key.decode(), entry_id.decode(), dict(zip(kvs[0::2], kvs[1::2]))
         )
         r.m[stream_key] = stream
+        r.last_entry_id = entry_id
         response = encode([entry_id])
 
     else:

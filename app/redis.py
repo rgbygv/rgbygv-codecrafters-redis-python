@@ -21,6 +21,8 @@ class Redis:
     ack_replica: int = -1
     expect_offset: int = 0
 
+    last_entry_id: bytes | None = None
+
 
 @dataclass
 class Stream:
