@@ -251,6 +251,12 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             response = encode([len(r.replica_ports)])
         else:
             response = encode([r.ack_replica])
+    elif command == b"TYPE":
+        key = args[0]
+        if key in r.m:
+            response = encode([b"string"])
+        else:
+            response = encode([b"none"])
     else:
         print(command)
         raise NotImplementedError
