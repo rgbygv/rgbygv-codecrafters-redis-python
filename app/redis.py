@@ -22,6 +22,7 @@ class Redis:
     expect_offset: int = 0
 
     last_entry_id: bytes | None = None
+    last_seq: dict = field(default_factory=dict)
 
 
 @dataclass
