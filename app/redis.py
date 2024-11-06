@@ -19,6 +19,7 @@ class Redis:
     connect_replica: dict = field(default_factory=dict)
 
     ack_replica: int = 0
+    expect_offset: int = 0
 
 
 def decode_master(message):

@@ -42,7 +42,7 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
             print(cmd)
             cmd[0] = cmd[0].upper()
             if cmd[0] == b"SET":
-                await handle_command(encode(cmd), None, reader, writer)
+                await handle_command(encode(cmd), None, writer)
             elif cmd[0] == b"REPLCONF":
                 print("Send ack response to master")
                 response = encode(f"REPLCONF ACK {offset}".encode().split())
@@ -71,7 +71,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         if len(msg) == 0:
             break
         print(f"Received: {msg}")
-        response = await handle_command(msg, connection_port, reader, writer)
+        response = await handle_command(msg, connection_port, writer)
         print(f"Sending response {response}")
         writer.write(response)
         await writer.drain()
@@ -135,7 +135,7 @@ async def main():
     await server_task
 
 
-async def handle_command(msg: bytes, connection_port: str | None, reader, writer):
+async def handle_command(msg: bytes, connection_port: str | None, writer):
     print(f"handle message {decode(msg)}")
     command, *args = decode(msg)
     command = command.upper()  # ignore case
@@ -144,16 +144,6 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
     elif command == b"ECHO":
         response = encode(args)
     elif command == b"SET":
-        # clear previous ack count
-        r.ack_replica = 0
-        for _replica_port, _writer in r.connect_replica.values():
-            print(f"Propagating command {msg} to replica {_replica_port}")
-            await send_command_to_replica(_replica_port, _writer, msg)
-        for _replica_port, _writer in r.connect_replica.values():
-            # but this will cause problem
-            print(f"Sending acknowledgement to replica {_replica_port}")
-            ack_msg = encode(b"REPLCONF GETACK *".split())
-            await send_command_to_replica(_replica_port, _writer, ack_msg)
         if len(args) == 2:
             k, v = args
             r.m[k] = encode([v])
@@ -165,6 +155,17 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         else:
             raise NotImplementedError
         response = OK
+
+        r.expect_offset += len(msg)
+        for _replica_port, _writer in r.connect_replica.values():
+            print(f"Sending propagating command {msg} to replica {_replica_port}")
+            await send_command_to_replica(_replica_port, _writer, msg)
+
+        ack_msg = encode(b"REPLCONF GETACK *".split())
+        r.expect_offset += len(ack_msg)
+        for _replica_port, _writer in r.connect_replica.values():
+            print(f"Sending acknowledgement command to replica {_replica_port}")
+            await send_command_to_replica(_replica_port, _writer, ack_msg)
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
@@ -215,9 +216,15 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         elif args[0] == b"capa":
             response = OK
         elif args[0] == b"ACK":
+            offset = int(args[1].decode())
             print(f"receive replica response of ack: {args}")
-            r.ack_replica += 1
+            ack_msg = encode(b"REPLCONF GETACK *".split())
+            if offset == r.expect_offset - len(ack_msg):
+                r.ack_replica += 1
+            else:
+                print(f"expect offset: {r.expect_offset}, actual: {offset}")
             raise NotImplementedError
+            # what is the response of ack
             # response = OK
     elif command == b"PSYNC":
         response = b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"
@@ -238,7 +245,6 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
             r.ack_replica < expect_replica
             and (time.time() - cur_time) * 1000 < expiry_time
         ):
-            # print(r.ack_replica, time.time() - cur_time)
             await asyncio.sleep(0)
         response = encode([r.ack_replica])
     else:
