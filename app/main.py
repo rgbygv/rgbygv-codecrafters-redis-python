@@ -5,7 +5,7 @@ import re
 import time
 from asyncio import StreamReader, StreamWriter
 
-from app.redis import NULL, OK, Redis, decode, decode_master, encode, read_rdb
+from app.redis import NULL, OK, Redis, Stream, decode, decode_master, encode, read_rdb
 
 r = Redis()
 
@@ -254,9 +254,21 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
     elif command == b"TYPE":
         key = args[0]
         if key in r.m:
-            response = encode([b"string"])
+            if isinstance(r.m[key], bytes):
+                response = encode([b"string"])
+            elif isinstance(r.m[key], Stream):
+                response = encode([b"stream"])
         else:
             response = encode([b"none"])
+    elif command == b"XADD":
+        stream_key, entry_id, *kvs = args
+        assert len(kvs) & 1 == 0
+        stream = Stream(
+            stream_key.decode(), entry_id.decode(), dict(zip(kvs[0::2], kvs[1::2]))
+        )
+        r.m[stream_key] = stream
+        response = encode([stream_key])
+
     else:
         print(command)
         raise NotImplementedError

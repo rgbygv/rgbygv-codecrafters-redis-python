@@ -22,6 +22,13 @@ class Redis:
     expect_offset: int = 0
 
 
+@dataclass
+class Stream:
+    key: str
+    id: str
+    kvs: dict = field(default_factory=dict)
+
+
 def decode_master(message):
     msg = message.split(b"\r\n")[:-1]
     print(f"maybe contain multiple command: {msg}")
@@ -41,6 +48,7 @@ def decode_master(message):
     return msgs
 
 
+# TODO: return list[str]
 def decode(message: bytearray) -> list[bytearray]:
     msg = message.split(b"\r\n")[:-1]
     n = len(msg)
@@ -59,6 +67,7 @@ def decode(message: bytearray) -> list[bytearray]:
         raise NotImplementedError
 
 
+# TODO: input should be str, not bytes
 def encode(
     s: list[bytearray | int], array_mode: bool = False, trail_space: bool = True
 ) -> bytearray:
