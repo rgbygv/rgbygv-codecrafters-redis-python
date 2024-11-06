@@ -232,9 +232,9 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         cur_time = time.time()
         while (
             r.ack_replica < expect_replica
-            or (time.time() - cur_time) / 1000 < expiry_time
+            and (time.time() - cur_time) / 1000 < expiry_time
         ):
-            pass
+            await asyncio.sleep(0)
         response = encode([r.ack_replica])
     else:
         print(command)
