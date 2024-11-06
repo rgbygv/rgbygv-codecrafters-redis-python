@@ -244,7 +244,11 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             and (time.time() - cur_time) * 1000 < expiry_time
         ):
             await asyncio.sleep(0)
-        response = encode([r.ack_replica])
+        # don't propagating write command
+        if r.ack_replica == -1:
+            response = encode([len(r.replica_ports)])
+        else:
+            response = encode([r.ack_replica])
     else:
         print(command)
         raise NotImplementedError

@@ -18,7 +18,7 @@ class Redis:
     replica_ports: dict = field(default_factory=dict)
     connect_replica: dict = field(default_factory=dict)
 
-    ack_replica: int = 0
+    ack_replica: int = -1
     expect_offset: int = 0
 
 
