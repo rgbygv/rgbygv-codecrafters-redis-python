@@ -223,6 +223,9 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         bin_empty_file = binascii.unhexlify(hex_empty_file)
         response = encode([bin_empty_file], trail_space=False)
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
+    elif command == b"WAIT":
+        print(args)
+        response = b"0"
     else:
         print(command)
         raise NotImplementedError
