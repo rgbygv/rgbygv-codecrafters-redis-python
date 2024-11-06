@@ -161,12 +161,6 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Sending propagating command {msg} to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, msg)
-
-        ack_msg = encode(b"REPLCONF GETACK *".split())
-        for _replica_port, _writer in r.connect_replica.values():
-            print(f"Sending acknowledgement command to replica {_replica_port}")
-            await send_command_to_replica(_replica_port, _writer, ack_msg)
-        r.expect_offset += len(ack_msg)
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
@@ -238,6 +232,13 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         print(
             f"wait for {expect_replica} replicas have acknowledged or {expiry_time} ms"
         )
+
+        ack_msg = encode(b"REPLCONF GETACK *".split())
+        for _replica_port, _writer in r.connect_replica.values():
+            print(f"Sending acknowledgement command to replica {_replica_port}")
+            await send_command_to_replica(_replica_port, _writer, ack_msg)
+        r.expect_offset += len(ack_msg)
+
         cur_time = time.time()
         while (
             r.ack_replica != -1
