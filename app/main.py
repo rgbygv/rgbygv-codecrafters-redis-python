@@ -51,7 +51,7 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
             else:
                 # ping
                 pass
-            offset += len(encode(cmd))
+            offset += len(encode(cmd, array_mode=True))
 
 
 async def send_command_to_replica(replica_port, writer, command: bytearray):
