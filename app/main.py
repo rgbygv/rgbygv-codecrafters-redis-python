@@ -72,11 +72,10 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
             break
         print(f"Received: {msg}")
         response = await handle_command(msg, connection_port, writer)
-        print(f"Sending response {response}")
-        writer.write(response)
-        await writer.drain()
-
-    # TODO: we give replica writer to connect_replcia dict
+        if response:
+            print(f"Sending response {response}")
+            writer.write(response)
+            await writer.drain()
 
 
 async def main():
@@ -139,6 +138,7 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
     print(f"handle message {decode(msg)}")
     command, *args = decode(msg)
     command = command.upper()  # ignore case
+    response = None
     if command == b"PING":
         response = b"+PONG\r\n"
     elif command == b"ECHO":
@@ -155,17 +155,18 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         else:
             raise NotImplementedError
         response = OK
-
+        # since we propagate new commmand, so all replica become not acked
+        r.ack_replica = 0
         r.expect_offset += len(msg)
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Sending propagating command {msg} to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, msg)
 
         ack_msg = encode(b"REPLCONF GETACK *".split())
-        r.expect_offset += len(ack_msg)
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Sending acknowledgement command to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, ack_msg)
+        r.expect_offset += len(ack_msg)
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
@@ -223,9 +224,6 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
                 r.ack_replica += 1
             else:
                 print(f"expect offset: {r.expect_offset}, actual: {offset}")
-            raise NotImplementedError
-            # what is the response of ack
-            # response = OK
     elif command == b"PSYNC":
         response = b"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n"
         print(f"Sending response {response}")
