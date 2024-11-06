@@ -149,9 +149,10 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Propagating command {msg} to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, msg)
-            # print(f"Sending acknowledgement to replica {_replica_port}")
-            # ack_msg = encode(b"REPLCONF GETACK *".split())
-            # await send_command_to_replica(_replica_port, _writer, ack_msg)
+            # but this will cause problem
+            print(f"Sending acknowledgement to replica {_replica_port}")
+            ack_msg = encode(b"REPLCONF GETACK *".split())
+            await send_command_to_replica(_replica_port, _writer, ack_msg)
         if len(args) == 2:
             k, v = args
             r.m[k] = encode([v])
@@ -228,7 +229,9 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
     elif command == b"WAIT":
         expect_replica, expiry_time = map(int, (arg.decode() for arg in args))
-        print(f"wait for have {expect_replica} replica ack or {expiry_time} ms")
+        print(
+            f"wait for {expect_replica} replicas have acknowledged or {expiry_time} ms"
+        )
         cur_time = time.time()
         while (
             r.ack_replica < expect_replica
