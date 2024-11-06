@@ -62,7 +62,7 @@ def encode(
     res = []
     if len(s) == 1 and not array_mode:
         # simple string
-        if isinstance(s[0], str):
+        if isinstance(s[0], bytes):
             res.append(f"${len(s[0])}".encode())
             res.append(s[0])
         # int
