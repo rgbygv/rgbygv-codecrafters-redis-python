@@ -31,6 +31,7 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
     rdb_file = await reader.read(int(rdb_file_len[1:]))
     print(f"rdb file length: {rdb_file_len}, file: {rdb_file}")
 
+    offset = 0
     while 1:
         msg = await reader.read(1024)
         if not msg:
@@ -44,9 +45,13 @@ async def send_message_to_master(master_host, master_port, messages: list[bytear
                 await handle_command(encode(cmd), None, reader, writer)
             elif cmd[0] == b"REPLCONF":
                 print("Send ack response to master")
-                response = encode(b"REPLCONF ACK 0".split())
+                response = encode(f"REPLCONF ACK {offset}".encode().split())
                 writer.write(response)
                 await writer.drain()
+            else:
+                # ping
+                pass
+            offset += len(encode(cmd))
 
 
 async def send_command_to_replica(replica_port, writer, command: bytearray):
