@@ -3,6 +3,7 @@ from typing import Tuple
 
 OK = b"+OK\r\n"
 NULL = b"$-1\r\n"
+ZERO = b":0\r\n"
 
 
 @dataclass
