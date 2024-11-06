@@ -227,13 +227,14 @@ async def handle_command(msg: bytes, connection_port: str | None, reader, writer
         response = encode([bin_empty_file], trail_space=False)
         r.connect_replica[connection_port] = r.replica_ports[connection_port], writer
     elif command == b"WAIT":
-        print(args)
         expect_replica, expiry_time = map(int, (arg.decode() for arg in args))
+        print(f"wait for have {expect_replica} replica ack or {expiry_time} ms")
         cur_time = time.time()
         while (
             r.ack_replica < expect_replica
-            and (time.time() - cur_time) / 1000 < expiry_time
+            and (time.time() - cur_time) * 1000 < expiry_time
         ):
+            # print(r.ack_replica, time.time() - cur_time)
             await asyncio.sleep(0)
         response = encode([r.ack_replica])
     else:
