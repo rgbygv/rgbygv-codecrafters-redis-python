@@ -296,12 +296,17 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
                 res.append(stream.encode())
         response = encode(res)
     elif command == b"XREAD":
-        block_time = 0
+        block_time = -1
         if args[0] == b"block":
             block_time = int(args[1].decode())
             args = args[2:]
         args = args[1:]
-        await asyncio.sleep(block_time / 1000)
+        if block_time > 0:
+            await asyncio.sleep(block_time / 1000)
+        elif block_time == 0:
+            last_entry_id = r.last_entry_id
+            while last_entry_id == r.last_entry_id:
+                await asyncio.sleep(0)
         query_len = len(args) // 2
         res = []
         ok = False
@@ -315,7 +320,7 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             if inner_res:
                 ok = True
             res.append([stream_key, inner_res])
-        if ok or block_time == 0:
+        if ok or block_time == -1:
             response = encode(res)
         else:
             response = NULL
