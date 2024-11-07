@@ -307,7 +307,7 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
                 if stream.valid(start, end=b"+", inclusive=False):
                     inner_res.append(stream.encode())
             res.append([stream_key, inner_res])
-        response = encode([res])
+        response = encode(res)
 
     else:
         print(command)
