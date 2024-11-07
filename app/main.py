@@ -254,12 +254,10 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
     elif command == b"TYPE":
         key = args[0]
         if key in r.m:
-            if isinstance(r.m[key], bytes):
-                response = encode([b"string"])
-            elif isinstance(r.m[key], Stream):
-                response = encode([b"stream"])
-        else:
-            response = encode([b"none"])
+            return encode([b"string"])
+        elif key in r.streams_dict:
+            return encode([b"stream"])
+        response = encode([b"none"])
     elif command == b"XADD":
         stream_key, entry_id, *kvs = args
         if entry_id == b"*":
@@ -280,14 +278,23 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             if (mt, sn) <= tuple(map(int, r.last_entry_id.decode().split("-"))):
                 return b"-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n"
 
-        r.m[stream_key] = Stream(
-            stream_key.decode(), entry_id.decode(), dict(zip(kvs[0::2], kvs[1::2]))
-        )
+        stream = Stream(entry_id, dict(zip(kvs[0::2], kvs[1::2])))
+        r.streams_dict[stream_key].append(stream)
+        print(r.streams_dict)
         r.last_seq[mt] = sn
         r.last_entry_id = entry_id
 
         response = encode([entry_id])
 
+    elif command == b"XRANGE":
+        stream_key, start, end = args
+        streams = r.streams_dict[stream_key]
+        print(f"Range {streams}")
+        res = []
+        for stream in streams:
+            if stream.valid(start, end):
+                res.append(stream.encode())
+        response = encode(res)
     else:
         print(command)
         raise NotImplementedError

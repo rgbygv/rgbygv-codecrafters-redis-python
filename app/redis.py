@@ -1,8 +1,46 @@
 from dataclasses import dataclass, field
 from typing import Tuple
+from math import inf
+from collections import defaultdict
 
 OK = b"+OK\r\n"
 NULL = b"$-1\r\n"
+
+
+@dataclass
+class Stream:
+    entry_id: bytes
+    kvs: dict = field(default_factory=dict)
+
+    def encode(self):
+        res = []
+        res.append(self.entry_id)
+        inner = []
+        for k, v in self.kvs.items():
+            inner.append(k)
+            inner.append(v)
+        res.append(inner)
+        return encode(res)
+
+    def valid(self, start, end):
+        return self.ge(start) and self.le(end)
+
+    @staticmethod
+    def parse(entry_id: bytes):
+        if entry_id == b"-":
+            return 0, 0
+        if entry_id == b"+":
+            return inf, inf
+        if b"-" in entry_id:
+            mt, sn = map(int, entry_id.decode().split("-"))
+            return mt, sn
+        return int(entry_id.decode()), 0
+
+    def ge(self, entry_id):
+        return self.parse(self.entry_id) >= self.parse(entry_id)
+
+    def le(self, entry_id):
+        return self.parse(self.entry_id) <= self.parse(entry_id)
 
 
 @dataclass
@@ -22,14 +60,11 @@ class Redis:
     expect_offset: int = 0
 
     last_entry_id: bytes | None = None
-    last_seq: dict = field(default_factory=dict)
+    last_seq: dict[int, int] = field(default_factory=dict)
 
-
-@dataclass
-class Stream:
-    key: str
-    id: str
-    kvs: dict = field(default_factory=dict)
+    streams_dict: defaultdict[bytes, list[Stream]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
 
 
 def decode_master(message):
@@ -88,9 +123,12 @@ def encode(
     else:
         res.append(f"*{len(s)}".encode())
         for key in s:
-            n = len(key)
-            res.append(f"${n}".encode())
-            res.append(key)
+            if isinstance(key, list):
+                res.append(encode(key))
+            else:
+                n = len(key)
+                res.append(f"${n}".encode())
+                res.append(key)
     if trail_space:
         res.append(b"")
     return b"\r\n".join(res)
