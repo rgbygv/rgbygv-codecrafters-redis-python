@@ -22,8 +22,10 @@ class Stream:
         res.append(inner)
         return res
 
-    def valid(self, start, end):
-        return self.ge(start) and self.le(end)
+    def valid(self, start, end, inclusive=True):
+        if inclusive:
+            return self.ge(start) and self.le(end)
+        return self.gt(start) and self.lt(end)
 
     @staticmethod
     def parse(entry_id: bytes):
@@ -41,6 +43,12 @@ class Stream:
 
     def le(self, entry_id):
         return self.parse(self.entry_id) <= self.parse(entry_id)
+
+    def gt(self, entry_id):
+        return self.parse(self.entry_id) > self.parse(entry_id)
+
+    def lt(self, entry_id):
+        return self.parse(self.entry_id) < self.parse(entry_id)
 
 
 @dataclass
@@ -110,6 +118,7 @@ def encode(
     s: list[bytearray | int], array_mode: bool = False, trail_space: bool = True
 ) -> bytearray:
     res = []
+    print(f"trying encode {s}")
     if len(s) == 1 and not array_mode:
         # simple string
         if isinstance(s[0], bytes):
@@ -118,6 +127,9 @@ def encode(
         # int
         elif isinstance(s[0], int):
             res.append(f":{s[0]}".encode())
+        elif isinstance(s[0], list):
+            res.append(b"*1")
+            res.append(encode(s[0], trail_space=False))
         else:
             raise NotImplementedError
     else:

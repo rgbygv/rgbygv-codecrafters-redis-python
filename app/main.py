@@ -295,6 +295,16 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             if stream.valid(start, end):
                 res.append(stream.encode())
         response = encode(res)
+    elif command == b"XREAD":
+        _, stream_key, start = args
+        streams = r.streams_dict[stream_key]
+        print(f"Range {streams}")
+        res = []
+        for stream in streams:
+            if stream.valid(start, end=b"+", inclusive=False):
+                res.append(stream.encode())
+        response = encode([[stream_key, res]])
+
     else:
         print(command)
         raise NotImplementedError
