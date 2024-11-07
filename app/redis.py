@@ -30,7 +30,7 @@ class Stream:
     @staticmethod
     def parse(entry_id: bytes):
         if entry_id == b"-" or entry_id == b"$":
-            return 0, 0
+            return 0, 1
         if entry_id == b"+":
             return inf, inf
         if b"-" in entry_id:
