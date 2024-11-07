@@ -296,9 +296,15 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
                 res.append(stream.encode())
         response = encode(res)
     elif command == b"XREAD":
+        block_time = 0
+        if args[0] == b"block":
+            block_time = int(args[1].decode())
+            args = args[2:]
         args = args[1:]
+        await asyncio.sleep(block_time / 1000)
         query_len = len(args) // 2
         res = []
+        ok = False
         for stream_key, start in zip(args[:query_len], args[query_len:]):
             streams = r.streams_dict[stream_key]
             print(f"Range {streams}")
@@ -306,8 +312,13 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             for stream in streams:
                 if stream.valid(start, end=b"+", inclusive=False):
                     inner_res.append(stream.encode())
+            if inner_res:
+                ok = True
             res.append([stream_key, inner_res])
-        response = encode(res)
+        if ok or block_time == 0:
+            response = encode(res)
+        else:
+            response = NULL
 
     else:
         print(command)
