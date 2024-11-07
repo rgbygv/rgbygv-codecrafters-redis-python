@@ -296,14 +296,18 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
                 res.append(stream.encode())
         response = encode(res)
     elif command == b"XREAD":
-        _, stream_key, start = args
-        streams = r.streams_dict[stream_key]
-        print(f"Range {streams}")
+        args = args[1:]
+        query_len = len(args) // 2
         res = []
-        for stream in streams:
-            if stream.valid(start, end=b"+", inclusive=False):
-                res.append(stream.encode())
-        response = encode([[stream_key, res]])
+        for stream_key, start in zip(args[:query_len], args[query_len:]):
+            streams = r.streams_dict[stream_key]
+            print(f"Range {streams}")
+            inner_res = []
+            for stream in streams:
+                if stream.valid(start, end=b"+", inclusive=False):
+                    inner_res.append(stream.encode())
+            res.append(inner_res)
+        response = encode([res])
 
     else:
         print(command)
