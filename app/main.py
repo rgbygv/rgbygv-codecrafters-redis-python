@@ -302,7 +302,7 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         for stream_key, start in zip(args[:query_len], args[query_len:]):
             streams = r.streams_dict[stream_key]
             print(f"Range {streams}")
-            inner_res = []
+            inner_res = [stream_key]
             for stream in streams:
                 if stream.valid(start, end=b"+", inclusive=False):
                     inner_res.append(stream.encode())
