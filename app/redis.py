@@ -20,7 +20,7 @@ class Stream:
             inner.append(k)
             inner.append(v)
         res.append(inner)
-        return encode(res)
+        return res
 
     def valid(self, start, end):
         return self.ge(start) and self.le(end)
@@ -124,7 +124,7 @@ def encode(
         res.append(f"*{len(s)}".encode())
         for key in s:
             if isinstance(key, list):
-                res.append(encode(key))
+                res.append(encode(key, trail_space=False))
             else:
                 n = len(key)
                 res.append(f"${n}".encode())
@@ -196,6 +196,14 @@ def read_rdb(dir: str, dbfile_name: str) -> Tuple[dict, dict]:
 
 
 if __name__ == "__main__":
+    # streams = [
+    #     [b"1526985054069-0", [b"temperature", b"36", b"humidity", b"95"]],
+    #     [b"1526985054079-0", [b"temperature", b"37", b"humidity", b"94"]],
+    # ]
+    # print(streams)
+
+    # print(encode(streams).decode())
+    # print(encode(streams))
     msg = b"*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n"
     s = decode(msg)
     rmsg = encode(s)
