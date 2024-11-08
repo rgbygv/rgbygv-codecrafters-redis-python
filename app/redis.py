@@ -74,6 +74,8 @@ class Redis:
         default_factory=lambda: defaultdict(list)
     )
 
+    MULTI: int = -1
+
 
 def decode_master(message):
     msg = message.split(b"\r\n")[:-1]

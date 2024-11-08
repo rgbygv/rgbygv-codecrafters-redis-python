@@ -66,12 +66,22 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
     _, connection_port, *_ = writer.get_extra_info("peername")
     print(f"Connect from {connection_port}")
 
+    queue = []
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
             break
         print(f"Received: {msg}")
         response = await handle_command(msg, connection_port, writer)
+        if r.MULTI != -1:
+            if r.MULTI == 0:
+                r.MULTI = 1
+            elif response:
+                queue.append(response)
+                response = b"+QUEUED\r\n"
+        if r.MULTI == -1 and queue:
+            response = f"*{len(queue)}\r\n".encode() + b"".join(queue) + b"\r\n"
+            queue = []
         if response:
             print(f"Sending response {response}")
             writer.write(response)
@@ -173,7 +183,12 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             r.m[key] = encode([b"1"])
         response = encode([int(decode(r.m[key])[0])])
     elif command == b"MULTI":
+        r.MULTI = 0
         response = OK
+    elif command == b"EXEC":
+        if r.MULTI == -1:
+            return b"-ERR EXEC without MULTI\r\n"
+        r.MULTI = -1
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
