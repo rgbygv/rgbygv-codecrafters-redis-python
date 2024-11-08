@@ -80,7 +80,9 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 queue.append(response)
                 response = b"+QUEUED\r\n"
         if r.MULTI == -1 and queue:
-            response = f"*{len(queue)}\r\n".encode() + b"".join(queue) + b"\r\n"
+            response = f"*{len(queue)}\r\n".encode()
+            if queue:
+                response += b"".join(queue) + b"\r\n"
             queue = []
         if response:
             print(f"Sending response {response}")
