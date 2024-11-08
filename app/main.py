@@ -73,9 +73,14 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         print(f"Received: {msg}")
         if r.MULTI[connection_port]:
             print(decode(msg))
-            if decode(msg)[0].upper() != b"EXEC":
+            command = decode(msg)[0].upper()
+            if command != b"EXEC":
                 r.queue[connection_port].append(msg)
                 response = b"+QUEUED\r\n"
+            elif command == b"DISCARD":
+                response = await handle_command(msg, connection_port, writer)
+                r.queue[connection_port].clear()
+                r.MULTI[connection_port] = False
             else:
                 _ = await handle_command(msg, connection_port, writer)
                 responses = []
@@ -88,6 +93,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                     response += b"".join(responses)
                     if response[-2:] != b"\r\n":
                         response += b"\r\n"
+                r.MULTI[connection_port] = False
                 r.queue[connection_port] = []
         else:
             response = await handle_command(msg, connection_port, writer)
@@ -197,7 +203,10 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
     elif command == b"EXEC":
         if not r.MULTI[connection_port]:
             return b"-ERR EXEC without MULTI\r\n"
-        r.MULTI[connection_port] = False
+    elif command == b"DISCARD":
+        if not r.MULTI[connection_port]:
+            return b"-ERR DISCARD without MULTI\r\n"
+        response = OK
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
