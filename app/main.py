@@ -163,7 +163,13 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             await send_command_to_replica(_replica_port, _writer, msg)
     elif command == b"INCR":
         key = args[0]
-        r.m[key] = r.m.get(key, 0) + 1
+        if key in r.m:
+            value = decode(r.m[key])[0]
+            if value.decode().isdigit():
+                r.m[key] = encode([str(int(value.decode()) + 1).encode()])
+        else:
+            r.m[key] = encode([b"1"])
+        response = encode([int(decode(r.m[key])[0])])
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
