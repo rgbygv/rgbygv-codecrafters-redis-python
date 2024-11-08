@@ -161,6 +161,9 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         for _replica_port, _writer in r.connect_replica.values():
             print(f"Sending propagating command {msg} to replica {_replica_port}")
             await send_command_to_replica(_replica_port, _writer, msg)
+    elif command == b"INCR":
+        key = args[0]
+        r.m[key] = r.m.get(key, 0) + 1
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
