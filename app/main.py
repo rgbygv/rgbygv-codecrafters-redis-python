@@ -167,6 +167,8 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             value = decode(r.m[key])[0]
             if value.decode().isdigit():
                 r.m[key] = encode([str(int(value.decode()) + 1).encode()])
+            else:
+                return b"-ERR value is not an integer or out of range\r\n"
         else:
             r.m[key] = encode([b"1"])
         response = encode([int(decode(r.m[key])[0])])
