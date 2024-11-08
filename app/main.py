@@ -77,7 +77,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 r.queue[connection_port].append(msg)
                 response = b"+QUEUED\r\n"
             else:
-                response = await handle_command(msg, connection_port, writer)
+                _ = await handle_command(msg, connection_port, writer)
                 responses = []
                 for msg in r.queue[connection_port]:
                     response = await handle_command(msg, connection_port, writer)
@@ -85,7 +85,9 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                         responses.append(response)
                 response = f"*{len(responses)}\r\n".encode()
                 if responses:
-                    response += b"".join(responses) + b"\r\n"
+                    response += b"".join(responses)
+                    if responses[-2:] != b"\r\n":
+                        response += b"\r\n"
                 r.queue[connection_port] = []
         else:
             response = await handle_command(msg, connection_port, writer)
