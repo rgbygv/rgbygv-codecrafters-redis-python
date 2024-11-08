@@ -95,8 +95,9 @@ def decode_master(message):
 
 
 # TODO: return list[str]
-def decode(message: bytearray) -> list[bytearray]:
-    print(f"trying decode {message}")
+def decode(message: bytearray, verbose: bool = False) -> list[bytearray]:
+    if verbose:
+        print(f"trying decode {message}")
     msg = message.split(b"\r\n")[:-1]
     n = len(msg)
     flg = msg[0]
@@ -116,10 +117,14 @@ def decode(message: bytearray) -> list[bytearray]:
 
 # TODO: input should be str, not bytes
 def encode(
-    s: list[bytearray | int], array_mode: bool = False, trail_space: bool = True
+    s: list[bytearray | int],
+    array_mode: bool = False,
+    trail_space: bool = True,
+    verbose: bool = False,
 ) -> bytearray:
+    if verbose:
+        print(f"trying encode {s}")
     res = []
-    print(f"trying encode {s}")
     if len(s) == 1 and not array_mode:
         # simple string
         if isinstance(s[0], bytes):
