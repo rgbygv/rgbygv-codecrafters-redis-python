@@ -58,7 +58,7 @@ class Redis:
     DBFILENAME: str = None
     REPLICAOF: str = None
 
-    m: dict[bytearray, bytearray] = field(default_factory=dict)
+    m: dict[bytearray, bytearray | int] = field(default_factory=dict)
     expiry: dict[bytearray, int] = field(default_factory=dict)
 
     replica_ports: dict = field(default_factory=dict)
@@ -96,6 +96,7 @@ def decode_master(message):
 
 # TODO: return list[str]
 def decode(message: bytearray) -> list[bytearray]:
+    print(f"trying decode {message}")
     msg = message.split(b"\r\n")[:-1]
     n = len(msg)
     flg = msg[0]
@@ -108,7 +109,7 @@ def decode(message: bytearray) -> list[bytearray]:
         return res
     elif flg[0:1] == b"$":
         # simple string
-        return [flg[1]]
+        return [msg[1]]
     else:
         raise NotImplementedError
 
