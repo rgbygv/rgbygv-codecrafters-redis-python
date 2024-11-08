@@ -74,14 +74,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
         if r.MULTI[connection_port]:
             print(decode(msg))
             command = decode(msg)[0].upper()
-            if command != b"EXEC":
-                r.queue[connection_port].append(msg)
-                response = b"+QUEUED\r\n"
-            elif command == b"DISCARD":
-                response = await handle_command(msg, connection_port, writer)
-                r.queue[connection_port].clear()
-                r.MULTI[connection_port] = False
-            else:
+            if command == b"EXEC":
                 _ = await handle_command(msg, connection_port, writer)
                 responses = []
                 for msg in r.queue[connection_port]:
@@ -95,6 +88,13 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                         response += b"\r\n"
                 r.MULTI[connection_port] = False
                 r.queue[connection_port] = []
+            elif command == b"DISCARD":
+                response = await handle_command(msg, connection_port, writer)
+                r.queue[connection_port].clear()
+                r.MULTI[connection_port] = False
+            else:
+                r.queue[connection_port].append(msg)
+                response = b"+QUEUED\r\n"
         else:
             response = await handle_command(msg, connection_port, writer)
         if response:
