@@ -172,6 +172,8 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
         else:
             r.m[key] = encode([b"1"])
         response = encode([int(decode(r.m[key])[0])])
+    elif command == b"MULTI":
+        response = OK
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
