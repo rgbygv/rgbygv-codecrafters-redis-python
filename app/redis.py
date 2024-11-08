@@ -74,7 +74,10 @@ class Redis:
         default_factory=lambda: defaultdict(list)
     )
 
-    MULTI: int = -1
+    MULTI: defaultdict[int, bool] = field(default_factory=lambda: defaultdict(bool))
+    queue: defaultdict[int, list[bytes]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
 
 
 def decode_master(message):

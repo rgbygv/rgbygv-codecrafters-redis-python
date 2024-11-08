@@ -66,26 +66,29 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
     _, connection_port, *_ = writer.get_extra_info("peername")
     print(f"Connect from {connection_port}")
 
-    queue = []
     while True:
         msg = await reader.read(1024)
         if len(msg) == 0:
             break
         print(f"Received: {msg}")
-        response = await handle_command(msg, connection_port, writer)
-        if r.MULTI != -1:
-            if r.MULTI == 0:
-                r.MULTI = 1
-            elif r.MULTI == 1:
-                if response:
-                    queue.append(response)
-                    response = b"+QUEUED\r\n"
-            elif r.MULTI == 2:
-                response = f"*{len(queue)}\r\n".encode()
-                if queue:
-                    response += b"".join(queue) + b"\r\n"
-                queue = []
-                r.MULTI = -1
+        if r.MULTI[connection_port]:
+            print(decode(msg))
+            if decode(msg)[0].upper() != b"EXEC":
+                r.queue[connection_port].append(msg)
+                response = b"+QUEUED\r\n"
+            else:
+                response = await handle_command(msg, connection_port, writer)
+                responses = []
+                for msg in r.queue[connection_port]:
+                    response = await handle_command(msg, connection_port, writer)
+                    if response:
+                        responses.append(response)
+                response = f"*{len(responses)}\r\n".encode()
+                if responses:
+                    response += b"".join(responses) + b"\r\n"
+                r.queue[connection_port] = []
+        else:
+            response = await handle_command(msg, connection_port, writer)
         if response:
             print(f"Sending response {response}")
             writer.write(response)
@@ -187,12 +190,12 @@ async def handle_command(msg: bytes, connection_port: str | None, writer):
             r.m[key] = encode([b"1"])
         response = encode([int(decode(r.m[key])[0])])
     elif command == b"MULTI":
-        r.MULTI = 0
+        r.MULTI[connection_port] = True
         response = OK
     elif command == b"EXEC":
-        if r.MULTI == -1:
+        if not r.MULTI[connection_port]:
             return b"-ERR EXEC without MULTI\r\n"
-        r.MULTI = 2  # exec queue
+        r.MULTI[connection_port] = False
     elif command == b"GET":
         k = args[0]
         if k in r.m and (k not in r.expiry or time.time() <= r.expiry[k]):
