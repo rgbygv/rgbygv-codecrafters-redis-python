@@ -86,7 +86,7 @@ async def handle_client(reader: StreamReader, writer: StreamWriter):
                 response = f"*{len(responses)}\r\n".encode()
                 if responses:
                     response += b"".join(responses)
-                    if responses[-2:] != b"\r\n":
+                    if response[-2:] != b"\r\n":
                         response += b"\r\n"
                 r.queue[connection_port] = []
         else:
